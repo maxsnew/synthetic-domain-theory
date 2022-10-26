@@ -1,0 +1,3 @@
+* Synthetic Domain Theory
+
+An experiment in doing synthetic domain theory in cubical agda.
