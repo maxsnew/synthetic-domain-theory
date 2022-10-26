@@ -1,4 +1,4 @@
-{-# OPTIONS --safe #-}
+{-# OPTIONS --safe --guardedness #-}
 module SDT where
 
 open import Cubical.Foundations.Prelude
@@ -101,9 +101,10 @@ record Dominance : Type (ℓ-suc ℓ) where
   data ω : Type (ℓ-suc ℓ) where
     think : L ω → ω
 
-  -- -- not decreasing
-  -- foldω : ∀ {X} → (L X → X) → ω → X
-  -- foldω f (think w) = f (map (foldω f) w)
+  foldω : ∀ {X} → (L X → X) → ω → X
+  foldω f (think x) = f (when (L.supp x) , (λ p → foldω f (L.elt x p)))
+
+  -- TODO: prove this is the initial algebra
 
   -- final algebra
   record ω+ : Type (ℓ-suc ℓ) where
@@ -128,12 +129,23 @@ record Dominance : Type (ℓ-suc ℓ) where
           d zero = λ _ → tt*
           d (suc n) = decreasing w n
 
-  -- this is the final coalgebra structure
-
-  -- described in "A presentation of the initial lift-algebra" by
-  -- Mamuka Jibladze http://www.rmi.ge/~jib/pubs/liftinif.pdf
-  -- though the result was also described by Simpson/Rosolini in now
-  -- possibly lost notes
+  -- this is the final coalgebra structure described in "A
+  -- presentation of the initial lift-algebra" by Mamuka Jibladze
+  -- http://www.rmi.ge/~jib/pubs/liftinif.pdf though the result was
+  -- also described by Simpson/Rosolini in now possibly lost notes
   pred' : ω+ → L ω+
   pred' w = when (predicate w zero) , (λ _ → record { predicate = λ n → predicate w (suc n) ; decreasing = λ n → decreasing w (suc n) })
 
+  -- TODO: prove this is the final coalgebra
+  unfoldω+ : ∀ {X} → (X → L X) → X → ω+
+  unfoldω+ {X} g x = record { predicate = {!!} ; decreasing = {!!} }
+
+  -- Should be able to show this is the same as ω+?
+  record ω+' : Type (ℓ-suc ℓ) where
+    coinductive
+    field
+      prj : L ω+'
+  
+  open ω+'
+  unfoldω+' : ∀ {X} → (X → L X) → X → ω+'
+  (unfoldω+' g x) .prj = when (L.supp (g x)) , (λ p → unfoldω+' g (L.elt (g x) p))
