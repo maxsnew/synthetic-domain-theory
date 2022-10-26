@@ -1,0 +1,4 @@
+name: synthetic-domain-theory
+include: .
+depend: cubical
+flags: --cubical --no-import-sorts
