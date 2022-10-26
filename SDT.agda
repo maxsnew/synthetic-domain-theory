@@ -149,3 +149,35 @@ record Dominance : Type (ℓ-suc ℓ) where
   open ω+'
   unfoldω+' : ∀ {X} → (X → L X) → X → ω+'
   (unfoldω+' g x) .prj = when (L.supp (g x)) , (λ p → unfoldω+' g (L.elt (g x) p))
+
+  ω→ω+ : ω → ω+'
+  ω→ω+ = unfoldω+' ω-coalg
+    where ω-coalg : ω → L ω
+          ω-coalg (think w) = w
+          -- equivalently:
+          -- ω-coalg = foldω (map think)
+
+  ω-chain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  ω-chain X = ω → X
+
+  limiting-chain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  limiting-chain X = ω+' → X
+
+  -- we can show this is a prop by showing ω→ω' is mono
+  has-limit : ∀ {X} → ω-chain X → Type (ℓ-suc ℓ)
+  has-limit {X} chainX = Σ (limiting-chain X) λ limChainX → chainX ≡ λ x → limChainX (ω→ω+ x)
+
+  -- TODO: should we require they are Sets too?
+
+  is-complete : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  is-complete X = ∀ (chain : ω-chain X) → has-limit chain
+
+  is-Predomain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  is-Predomain X = is-complete (L X)
+
+  Predomain : Type (ℓ-suc (ℓ-suc ℓ))
+  Predomain = TypeWithStr (ℓ-suc ℓ) is-Predomain
+
+  -- whoops can't define this this way. Need to use module rather than record :)
+  -- field
+  --   Σ-is-complete : is-complete ⟨ SDProp ⟩
