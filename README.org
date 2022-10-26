@@ -1,3 +1,9 @@
 * Synthetic Domain Theory
 
 An experiment in doing synthetic domain theory in cubical agda.
+
+** References
+
+- Fiore and Plotkin's article [An Extension of Models of Axiomatic
+  Domain Theory to Models of Synthetic Domain
+  Theory](https://homepages.inf.ed.ac.uk/gdp/publications/ADT_and_SDT.pdf).
