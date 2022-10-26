@@ -4,4 +4,5 @@ An experiment in doing synthetic domain theory in cubical agda.
 
 ** References
 
-- Fiore and Plotkin's article [[https://homepages.inf.ed.ac.uk/gdp/publications/ADT_and_SDT.pdf][An Extension of Models of Axiomatic Domain Theory to Models of Synthetic Domain Theory]].
+We are mostly following Fiore and Plotkin's [[https://homepages.inf.ed.ac.uk/gdp/publications/ADT_and_SDT.pdf][An Extension of Models of
+Axiomatic Domain Theory to Models of Synthetic Domain Theory]].
