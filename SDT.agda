@@ -4,8 +4,10 @@ module SDT where
 open import Cubical.Foundations.Prelude
 open import Cubical.Foundations.HLevels
 open import Cubical.Foundations.Structure
-open import Cubical.Data.Nat
+
 open import Cubical.Data.Empty
+open import Cubical.Data.Nat
+open import Cubical.Data.Sigma
 
 open import Cubical.Functions.Logic
 
@@ -145,7 +147,7 @@ record Dominance : Type (ℓ-suc ℓ) where
     coinductive
     field
       prj : L ω+'
-  
+
   open ω+'
   unfoldω+' : ∀ {X} → (X → L X) → X → ω+'
   (unfoldω+' g x) .prj = when (L.supp (g x)) , (λ p → unfoldω+' g (L.elt (g x) p))
@@ -165,13 +167,12 @@ record Dominance : Type (ℓ-suc ℓ) where
 
   -- we can show this is a prop by showing ω→ω' is mono
   has-limit : ∀ {X} → ω-chain X → Type (ℓ-suc ℓ)
-  has-limit {X} chainX = Σ (limiting-chain X) λ limChainX → chainX ≡ λ x → limChainX (ω→ω+ x)
-
-  -- TODO: should we require they are Sets too?
+  has-limit {X} chainX = ∃![ limChain ∈ limiting-chain X ] chainX ≡ (λ x → limChain (ω→ω+ x))
 
   is-complete : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
   is-complete X = ∀ (chain : ω-chain X) → has-limit chain
 
+  -- TODO: should almost certainly require them to be hSets as well...
   is-Predomain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
   is-Predomain X = is-complete (L X)
 
