@@ -3,7 +3,9 @@ module SDT where
 
 open import Cubical.Foundations.Prelude
 open import Cubical.Foundations.HLevels
+open import Cubical.Foundations.Isomorphism
 open import Cubical.Foundations.Structure
+open import Cubical.Foundations.Univalence
 
 open import Cubical.Data.Empty
 open import Cubical.Data.Nat
@@ -15,7 +17,7 @@ private
   variable
     ℓ : Level
 
-record Dominance : Type (ℓ-suc ℓ) where
+record Dominance {ℓ} : Type (ℓ-suc ℓ) where
   Ω : Type (ℓ-suc ℓ)
   Ω = hProp ℓ
   field
@@ -24,36 +26,31 @@ record Dominance : Type (ℓ-suc ℓ) where
   _is-semi-decidable-prop : Type ℓ → Type ℓ
   X is-semi-decidable-prop = Σ[ p ∈ isProp X ] ⟨ (X , p) is-semi-decidable ⟩
 
-  SDProp : Type (ℓ-suc ℓ)
-  SDProp = TypeWithStr ℓ _is-semi-decidable-prop
+  SDProp : hSet (ℓ-suc ℓ)
+  SDProp = TypeWithStr ℓ _is-semi-decidable-prop , {!!}
 
-  as-hProp : SDProp → Ω
+  as-hProp : ⟨ SDProp ⟩ → Ω
   as-hProp X = ⟨ X ⟩ , (fst (snd X))
 
-  hProp→SDProp : (p : Ω) → ⟨ p is-semi-decidable ⟩ → SDProp
+  hProp→SDProp : (p : Ω) → ⟨ p is-semi-decidable ⟩ → ⟨ SDProp ⟩
   hProp→SDProp p q = ⟨ p ⟩ , ((str p) , q)
 
   field
     ⊤-is-sd : ⟨ ⊤ is-semi-decidable ⟩
-  ⊤' : SDProp
+  ⊤' : ⟨ SDProp ⟩
   ⊤' = hProp→SDProp ⊤ ⊤-is-sd
 
   field
-     ∃-is-semi-deciable : (U : SDProp) → (P : ⟨ U ⟩ → SDProp) → ⟨ (∃[ u ] as-hProp (P u)) is-semi-decidable ⟩
+     ∃-is-semi-deciable : (U : ⟨ SDProp ⟩) → (P : ⟨ U ⟩ → ⟨ SDProp ⟩) → ⟨ (∃[ u ] as-hProp (P u)) is-semi-decidable ⟩
 
-  ∃' : (U : SDProp) → (⟨ U ⟩ → SDProp) → SDProp
+  ∃' : (U : ⟨ SDProp ⟩) → (⟨ U ⟩ → ⟨ SDProp ⟩) → ⟨ SDProp ⟩
   ∃' U P = hProp→SDProp (∃[ u ] as-hProp (P u)) (∃-is-semi-deciable U P)
 
   fst' : ∀ {U P} → ⟨ ∃' U P ⟩ → ⟨ U ⟩
-  fst' = {!!}
+  fst' ex = {!!}
 
   snd' : ∀ {U P} → (q : ⟨ ∃' U P ⟩) → ⟨ P (fst' {U}{P} q) ⟩
   snd' = {!!}
-
-  field
-    ⊥-is-semi-decidable : ⟨ (⊥* , isProp⊥*) is-semi-decidable ⟩
-  ⊥' : SDProp
-  ⊥' = ⊥* , isProp⊥* , ⊥-is-semi-decidable
 
 -- ∃[]-syntax : (A → hProp ℓ) → hProp _
 -- ∃[]-syntax {A = A} P = ∥ Σ A (⟨_⟩ ∘ P) ∥ₚ
@@ -66,13 +63,23 @@ record Dominance : Type (ℓ-suc ℓ) where
   -- Domains wrt the dominance must live in the next universe in a
   -- predicative theory to accommoddate this notion of lifting.
 
-  -- related: https://arxiv.org/abs/2008.01422
+module LiftMonad (ΣΣ : Dominance {ℓ}) where
+  module ΣΣ = Dominance ΣΣ
+  open ΣΣ
+ -- related: https://arxiv.org/abs/2008.01422
   record L (X : Type (ℓ-suc ℓ)) : Type (ℓ-suc ℓ) where
     inductive
     constructor when_,_
     field
-      supp : SDProp
+      supp : ⟨ SDProp ⟩
       elt  : ⟨ supp ⟩ → X
+
+  open L
+  eqv-toΣ : ∀ {X} → L X ≡ (Σ[ supp ∈ ⟨ SDProp ⟩ ] (⟨ supp ⟩ → X))
+  eqv-toΣ = {!isoToEquiv!}
+
+  𝕃 : hSet (ℓ-suc ℓ) → hSet (ℓ-suc ℓ)
+  𝕃 X = (L ⟨ X ⟩) , transport (λ i → isSet (sym (eqv-toΣ {⟨ X ⟩}) i)) (isSetΣ {!!} λ x → isSet→ (str X))
 
   η : ∀ {X} → X → L X
   η x = when ⊤' , (λ _ → x)
@@ -81,7 +88,7 @@ record Dominance : Type (ℓ-suc ℓ) where
   ext k l = when ∃' U P ,
                  λ x → L.elt (k (L.elt l (fst' {U}{P} x))) (snd' {U}{P} x)
     where U = L.supp l
-          P : ⟨ U ⟩ → SDProp
+          P : ⟨ U ⟩ → ⟨ SDProp ⟩
           P u = L.supp (k (L.elt l u))
 
   map : ∀ {X Y} → (X → Y) → L X → L Y
@@ -99,6 +106,8 @@ record Dominance : Type (ℓ-suc ℓ) where
   L-assoc : ∀ {X Y Z} (l : L X) (k : X → L Y) (h : Y → L Z) → ext (λ x → ext h (k x)) l ≡ ext h (ext k l)
   L-assoc = {!!}
 
+  -- L⊥≡⊤ :
+
   -- initial algebra?
   data ω : Type (ℓ-suc ℓ) where
     think : L ω → ω
@@ -111,11 +120,11 @@ record Dominance : Type (ℓ-suc ℓ) where
   -- final algebra
   record ω+ : Type (ℓ-suc ℓ) where
     field
-      predicate : ℕ → SDProp
+      predicate : ℕ → ⟨ SDProp ⟩
       decreasing   : ∀ n → ⟨ predicate (suc n) ⟩ → ⟨ predicate n ⟩
 
-  zero' : ω+
-  zero' = record { predicate = λ x → ⊥' ; decreasing = λ n z → z }
+  -- zero' : ω+
+  -- zero' = record { predicate = λ x → ⊥' ; decreasing = λ n z → z }
 
   limit : ω+
   limit = record { predicate = λ x → ⊤' ; decreasing = λ n _ → tt* }
@@ -123,7 +132,7 @@ record Dominance : Type (ℓ-suc ℓ) where
   open ω+
   suc' : ω+ → ω+
   suc' w = record { predicate = p ; decreasing = d }
-    where p : ℕ → SDProp
+    where p : ℕ → ⟨ SDProp ⟩
           p zero = ⊤'
           p (suc n) = predicate w n
 
@@ -165,20 +174,39 @@ record Dominance : Type (ℓ-suc ℓ) where
   limiting-chain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
   limiting-chain X = ω+' → X
 
-  -- we can show this is a prop by showing ω→ω' is mono
-  has-limit : ∀ {X} → ω-chain X → Type (ℓ-suc ℓ)
-  has-limit {X} chainX = ∃![ limChain ∈ limiting-chain X ] chainX ≡ (λ x → limChain (ω→ω+ x))
+  has-limit : ∀ {X} → ω-chain X → hProp (ℓ-suc ℓ)
+  has-limit {X} chainX = (∃![ limChain ∈ limiting-chain X ] chainX ≡ (λ x → limChain (ω→ω+ x))) , isProp∃!
 
-  is-complete : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
-  is-complete X = ∀ (chain : ω-chain X) → has-limit chain
+  is-complete : Type (ℓ-suc ℓ) → hProp (ℓ-suc ℓ)
+  is-complete X = (∀ (chain : ω-chain X) → ⟨ has-limit chain ⟩) , isPropΠ λ x → str (has-limit x)
 
   -- TODO: should almost certainly require them to be hSets as well...
+  -- aka "well-complete"
   is-Predomain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
-  is-Predomain X = is-complete (L X)
+  is-Predomain X = ⟨ is-complete (L X) ⟩
 
   Predomain : Type (ℓ-suc (ℓ-suc ℓ))
   Predomain = TypeWithStr (ℓ-suc ℓ) is-Predomain
 
-  -- whoops can't define this this way. Need to use module rather than record :)
-  -- field
-  --   Σ-is-complete : is-complete ⟨ SDProp ⟩
+module SDT (ΣΣ : Dominance {ℓ})
+           (⊥-is-semi-decidable : ⟨ Dominance._is-semi-decidable ΣΣ (⊥* , isProp⊥*) ⟩)
+           (Σ-is-complete : ⟨ LiftMonad.is-complete ΣΣ ⟨ Dominance.SDProp ΣΣ ⟩ ⟩)
+           where
+  -- Do we need another axiom?
+  
+  -- The last axiom in Fiore-Rosolini is that the lifting functor L
+  -- has "rank", meaning it preserves κ-filtered colimits for some
+  -- regular cardinal κ.
+
+  -- but they say it is also sufficient that L preserve reflexive
+  -- coequalizers which seems maybe possible to prove?
+
+  module ΣΣ = Dominance ΣΣ
+  open ΣΣ
+  open LiftMonad ΣΣ
+  ⊥' : ⟨ SDProp ⟩
+  ⊥' = hProp→SDProp (⊥* , isProp⊥*) ⊥-is-semi-decidable
+
+  L0≡1 : L ⊥* ≡ Unit*
+  L0≡1 = ua (isoToEquiv (iso (λ x → lift tt) (λ x → LiftMonad.when ⊥' , λ (lift falso) → Cubical.Data.Empty.elim falso) (λ b → refl) λ a → {!!}))
+  
