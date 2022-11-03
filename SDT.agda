@@ -11,202 +11,150 @@ open import Cubical.Data.Empty
 open import Cubical.Data.Nat
 open import Cubical.Data.Sigma
 
-open import Cubical.Functions.Logic
-
 private
   variable
     ℓ : Level
 
 record Dominance {ℓ} : Type (ℓ-suc ℓ) where
-  Ω : Type (ℓ-suc ℓ)
-  Ω = hProp ℓ
   field
-    _is-semi-decidable : Ω → Ω
+    isSemiDecidableProp : Type ℓ → Type ℓ
+    isSemiDecidableProp→isProp : ∀ X → isSemiDecidableProp X → isProp X
+    isPropisSemiDecidableProp : ∀ X → isProp (isSemiDecidableProp X)
 
-  _is-semi-decidable-prop : Type ℓ → Type ℓ
-  X is-semi-decidable-prop = Σ[ p ∈ isProp X ] ⟨ (X , p) is-semi-decidable ⟩
+  hSDProp : Type (ℓ-suc ℓ)
+  hSDProp = TypeWithStr ℓ isSemiDecidableProp
 
-  SDProp : hSet (ℓ-suc ℓ)
-  SDProp = TypeWithStr ℓ _is-semi-decidable-prop , {!!}
+  isSetSDProp : isSet hSDProp
+  isSetSDProp = λ (X , a) (Y , b) →
+    isPropRetract (cong fst)
+                  (Σ≡Prop isPropisSemiDecidableProp)
+                  (section-Σ≡Prop isPropisSemiDecidableProp)
+                  (isOfHLevel≡ 1 (isSemiDecidableProp→isProp X a) (isSemiDecidableProp→isProp Y b))
 
-  as-hProp : ⟨ SDProp ⟩ → Ω
-  as-hProp X = ⟨ X ⟩ , (fst (snd X))
-
-  hProp→SDProp : (p : Ω) → ⟨ p is-semi-decidable ⟩ → ⟨ SDProp ⟩
-  hProp→SDProp p q = ⟨ p ⟩ , ((str p) , q)
-
-  field
-    ⊤-is-sd : ⟨ ⊤ is-semi-decidable ⟩
-  ⊤' : ⟨ SDProp ⟩
-  ⊤' = hProp→SDProp ⊤ ⊤-is-sd
+  -- hSDPropExt : ∀ {A B} → isSemiDecidableProp A → isSemiDecidableProp B → (A → B) → (B → A) → A ≡ B
+  -- hSDPropExt = {!!}
 
   field
-     ∃-is-semi-deciable : (U : ⟨ SDProp ⟩) → (P : ⟨ U ⟩ → ⟨ SDProp ⟩) → ⟨ (∃[ u ] as-hProp (P u)) is-semi-decidable ⟩
+    isSemiDecidable⊤ : isSemiDecidableProp Unit*
+    isSemiDecidableΣ : ∀ {A B} → isSemiDecidableProp A → ((x : A) → isSemiDecidableProp (B x)) → isSemiDecidableProp (Σ A B)
 
-  ∃' : (U : ⟨ SDProp ⟩) → (⟨ U ⟩ → ⟨ SDProp ⟩) → ⟨ SDProp ⟩
-  ∃' U P = hProp→SDProp (∃[ u ] as-hProp (P u)) (∃-is-semi-deciable U P)
-
-  fst' : ∀ {U P} → ⟨ ∃' U P ⟩ → ⟨ U ⟩
-  fst' ex = {!!}
-
-  snd' : ∀ {U P} → (q : ⟨ ∃' U P ⟩) → ⟨ P (fst' {U}{P} q) ⟩
-  snd' = {!!}
-
--- ∃[]-syntax : (A → hProp ℓ) → hProp _
--- ∃[]-syntax {A = A} P = ∥ Σ A (⟨_⟩ ∘ P) ∥ₚ
-
--- ∃[∶]-syntax : (A → hProp ℓ) → hProp _
--- ∃[∶]-syntax {A = A} P = ∥ Σ A (⟨_⟩ ∘ P) ∥ₚ
-
--- syntax ∃[∶]-syntax {A = A} (λ x → P) = ∃[ x ∶ A ] P
--- syntax ∃[]-syntax (λ x → P) = ∃[ x ] P
-  -- Domains wrt the dominance must live in the next universe in a
-  -- predicative theory to accommoddate this notion of lifting.
-
+-- Domains wrt the dominance must live in the next universe in a
+-- predicative theory to accommoddate this notion of lifting.
+-- related: https://arxiv.org/abs/2008.01422
 module LiftMonad (ΣΣ : Dominance {ℓ}) where
   module ΣΣ = Dominance ΣΣ
   open ΣΣ
- -- related: https://arxiv.org/abs/2008.01422
-  record L (X : Type (ℓ-suc ℓ)) : Type (ℓ-suc ℓ) where
-    inductive
-    constructor when_,_
-    field
-      supp : ⟨ SDProp ⟩
-      elt  : ⟨ supp ⟩ → X
+  L : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  L X = Σ[ ϕ ∈ hSDProp ] (⟨ ϕ ⟩ → X)
 
-  open L
-  eqv-toΣ : ∀ {X} → L X ≡ (Σ[ supp ∈ ⟨ SDProp ⟩ ] (⟨ supp ⟩ → X))
-  eqv-toΣ = {!isoToEquiv!}
+  when_,_ : ∀ {X} → (ϕ : hSDProp) → (⟨ ϕ ⟩ → X) → L X
+  when ϕ , x~ = ϕ , x~
 
-  𝕃 : hSet (ℓ-suc ℓ) → hSet (ℓ-suc ℓ)
-  𝕃 X = (L ⟨ X ⟩) , transport (λ i → isSet (sym (eqv-toΣ {⟨ X ⟩}) i)) (isSetΣ {!!} λ x → isSet→ (str X))
+  supp : ∀ {X} → L X → hSDProp
+  supp l = fst l
+
+  elt : ∀ {X} → (l : L X) → ⟨ supp l ⟩ → X
+  elt l p = snd l p
+
+  isSetL : ∀ {A} → isSet A → isSet (L A)
+  isSetL {A} a = isSetΣ ΣΣ.isSetSDProp (λ _ → isSet→ a)
 
   η : ∀ {X} → X → L X
-  η x = when ⊤' , (λ _ → x)
+  η x = when (Unit* , isSemiDecidable⊤) , λ tt → x
 
   ext : ∀ {X Y} → (X → L Y) → L X → L Y
-  ext k l = when ∃' U P ,
-                 λ x → L.elt (k (L.elt l (fst' {U}{P} x))) (snd' {U}{P} x)
-    where U = L.supp l
-          P : ⟨ U ⟩ → ⟨ SDProp ⟩
-          P u = L.supp (k (L.elt l u))
+  ext k l = when ((Σ ⟨ supp l ⟩ (λ p → ⟨ supp (k (elt l p)) ⟩)) , isSemiDecidableΣ (str (supp l)) λ p → str (supp (k (elt l p)))) ,
+                 λ p → elt (k (elt l (fst p))) (snd p)
 
   map : ∀ {X Y} → (X → Y) → L X → L Y
-  map f = ext λ x → η (f x)
-
-  -- might be useful to have a characterization of equality
-  -- l ≡ l' when supp l iff supp l' and (s : supp l) → (s' : supp l') → elt l s ≡ elt l' s'
+  map f x~ = (supp x~) , (λ p → f (elt x~ p))
 
   L-unit-R : ∀ {X} → (l : L X) → ext {X} η l ≡ l
-  L-unit-R = {!!}
+  L-unit-R l = {!!}
 
   L-unit-L : ∀ {X Y} → (x : X) → (k : X → L Y) → ext k (η x) ≡ k x
-  L-unit-L = {!!}
+  L-unit-L x k = {!!}
 
   L-assoc : ∀ {X Y Z} (l : L X) (k : X → L Y) (h : Y → L Z) → ext (λ x → ext h (k x)) l ≡ ext h (ext k l)
   L-assoc = {!!}
 
-  -- L⊥≡⊤ :
-
-  -- initial algebra?
   data ω : Type (ℓ-suc ℓ) where
     think : L ω → ω
 
   foldω : ∀ {X} → (L X → X) → ω → X
-  foldω f (think x) = f (when (L.supp x) , (λ p → foldω f (L.elt x p)))
+  foldω f (think x) = f ((fst x) , (λ p → foldω f (snd x p)))
 
-  -- TODO: prove this is the initial algebra
+  ω-is-initial : ∀ {X} → isSet X → (f : L X → X) → ∃![ h ∈ (ω → X) ] (∀ (l : L ω) → h (think l) ≡ f (map h l))
+  ω-is-initial {X} a f =
+    uniqueExists (foldω f)
+                 (λ l → refl)
+                 (λ a' → isPropΠ λ x → a (a' (think x)) (f (map a' x)))
+                 (λ h hyp i o → lem h hyp o i)
+    where lem : (h : ω → X) → ((x : L ω) → h (think x) ≡ f (map h x)) → ∀ o → foldω f o ≡ h o
+          lem h hyp (think x) =
+            f (fst x , (λ p → foldω f (snd x p))) ≡⟨ (λ i → f ((fst x) , (λ p → lem h hyp (snd x p) i))) ⟩
+            f (map h x) ≡⟨ sym (hyp x) ⟩
+            h (think x) ∎
 
   -- final algebra
   record ω+ : Type (ℓ-suc ℓ) where
-    field
-      predicate : ℕ → ⟨ SDProp ⟩
-      decreasing   : ∀ n → ⟨ predicate (suc n) ⟩ → ⟨ predicate n ⟩
-
-  -- zero' : ω+
-  -- zero' = record { predicate = λ x → ⊥' ; decreasing = λ n z → z }
-
-  limit : ω+
-  limit = record { predicate = λ x → ⊤' ; decreasing = λ n _ → tt* }
-
-  open ω+
-  suc' : ω+ → ω+
-  suc' w = record { predicate = p ; decreasing = d }
-    where p : ℕ → ⟨ SDProp ⟩
-          p zero = ⊤'
-          p (suc n) = predicate w n
-
-          d : ∀ n → ⟨ p (suc n) ⟩ → ⟨ p n ⟩
-          d zero = λ _ → tt*
-          d (suc n) = decreasing w n
-
-  -- this is the final coalgebra structure described in "A
-  -- presentation of the initial lift-algebra" by Mamuka Jibladze
-  -- http://www.rmi.ge/~jib/pubs/liftinif.pdf though the result was
-  -- also described by Simpson/Rosolini in now possibly lost notes
-  pred' : ω+ → L ω+
-  pred' w = when (predicate w zero) , (λ _ → record { predicate = λ n → predicate w (suc n) ; decreasing = λ n → decreasing w (suc n) })
-
-  -- TODO: prove this is the final coalgebra
-  unfoldω+ : ∀ {X} → (X → L X) → X → ω+
-  unfoldω+ {X} g x = record { predicate = {!!} ; decreasing = {!!} }
-
-  -- Should be able to show this is the same as ω+?
-  record ω+' : Type (ℓ-suc ℓ) where
     coinductive
     field
-      prj : L ω+'
+      prj : L ω+
 
-  open ω+'
-  unfoldω+' : ∀ {X} → (X → L X) → X → ω+'
-  (unfoldω+' g x) .prj = when (L.supp (g x)) , (λ p → unfoldω+' g (L.elt (g x) p))
+  -- TODO
+  -- isSetω+ : isSet ω+
+  -- isSetω+ x y = λ x₁ y₁ → {!!}
 
-  ω→ω+ : ω → ω+'
-  ω→ω+ = unfoldω+' ω-coalg
-    where ω-coalg : ω → L ω
-          ω-coalg (think w) = w
-          -- equivalently:
-          -- ω-coalg = foldω (map think)
+  open ω+
+  unfoldω+ : ∀ {X} → (X → L X) → X → ω+
+  unfoldω+ g x .prj = supp (g x) , λ p → unfoldω+ g (elt (g x) p)
 
-  ω-chain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
-  ω-chain X = ω → X
+  -- TODO
+  -- ω+-is-final : ∀ {X} → isSet X → (g : X → L X) → ∃![ h ∈ (X → ω+) ] (∀ x → ω+.prj (h x) ≡ map h (g x))
+  -- ω+-is-final = {!!}
 
-  limiting-chain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
-  limiting-chain X = ω+' → X
+  ω→ω+ : ω → ω+
+  ω→ω+ = unfoldω+ (foldω (map think))
 
-  has-limit : ∀ {X} → ω-chain X → hProp (ℓ-suc ℓ)
-  has-limit {X} chainX = (∃![ limChain ∈ limiting-chain X ] chainX ≡ (λ x → limChain (ω→ω+ x))) , isProp∃!
+  hasLimit : ∀ {X : Type (ℓ-suc ℓ)} → (ω → X) → Type (ℓ-suc ℓ)
+  hasLimit {X} chainX = ∃![ limChain ∈ (ω+ → X) ] chainX ≡ (λ x → limChain (ω→ω+ x))
 
-  is-complete : Type (ℓ-suc ℓ) → hProp (ℓ-suc ℓ)
-  is-complete X = (∀ (chain : ω-chain X) → ⟨ has-limit chain ⟩) , isPropΠ λ x → str (has-limit x)
+  isPropHasLimit : ∀ {X} → (chain : ω → X) → isProp (hasLimit chain)
+  isPropHasLimit chain = isProp∃!
 
-  -- TODO: should almost certainly require them to be hSets as well...
-  -- aka "well-complete"
-  is-Predomain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
-  is-Predomain X = ⟨ is-complete (L X) ⟩
+  isComplete : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  isComplete X = ∀ (chain : ω → X) → hasLimit chain
+
+  isPropIsComplete : ∀ {X} → isProp (isComplete X)
+  isPropIsComplete = isPropΠ isPropHasLimit
+
+  isPredomain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  isPredomain X = isSet X × isComplete X
 
   Predomain : Type (ℓ-suc (ℓ-suc ℓ))
-  Predomain = TypeWithStr (ℓ-suc ℓ) is-Predomain
+  Predomain = TypeWithStr (ℓ-suc ℓ) isPredomain
 
 module SDT (ΣΣ : Dominance {ℓ})
-           (⊥-is-semi-decidable : ⟨ Dominance._is-semi-decidable ΣΣ (⊥* , isProp⊥*) ⟩)
-           (Σ-is-complete : ⟨ LiftMonad.is-complete ΣΣ ⟨ Dominance.SDProp ΣΣ ⟩ ⟩)
+           (⊥-isSemiDecidable : Dominance.isSemiDecidableProp ΣΣ ⊥*)
+           (Σ-is-complete : LiftMonad.isComplete ΣΣ (Dominance.hSDProp ΣΣ))
            where
   -- Do we need another axiom?
   
-  -- The last axiom in Fiore-Rosolini is that the lifting functor L
-  -- has "rank", meaning it preserves κ-filtered colimits for some
-  -- regular cardinal κ.
+--   -- The last axiom in Fiore-Rosolini is that the lifting functor L
+--   -- has "rank", meaning it preserves κ-filtered colimits for some
+--   -- regular cardinal κ.
 
-  -- but they say it is also sufficient that L preserve reflexive
-  -- coequalizers which seems maybe possible to prove?
+--   -- but they say it is also sufficient that L preserve reflexive
+--   -- coequalizers which seems maybe possible to prove?
+
 
   module ΣΣ = Dominance ΣΣ
   open ΣΣ
   open LiftMonad ΣΣ
-  ⊥' : ⟨ SDProp ⟩
-  ⊥' = hProp→SDProp (⊥* , isProp⊥*) ⊥-is-semi-decidable
+
+  isPredomainSDProp : isPredomain hSDProp
+  isPredomainSDProp = isSetSDProp , Σ-is-complete
 
   L0≡1 : L ⊥* ≡ Unit*
-  L0≡1 = ua (isoToEquiv (iso (λ x → lift tt) (λ x → LiftMonad.when ⊥' , λ (lift falso) → Cubical.Data.Empty.elim falso) (λ b → refl) λ a → {!!}))
-  
+  L0≡1 = ua (isoToEquiv (iso (λ x → lift tt) (λ x → (⊥* , ⊥-isSemiDecidable) , λ lifted → Cubical.Data.Empty.elim (lower lifted)) (λ b → refl) λ a → Σ≡Prop (λ x → isProp→ isProp⊥*) (Σ≡Prop isPropisSemiDecidableProp (ua (uninhabEquiv lower λ x → lower (snd a x))))))
