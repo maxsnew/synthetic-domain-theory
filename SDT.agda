@@ -140,14 +140,13 @@ module SDT (ΣΣ : Dominance {ℓ})
            (Σ-is-complete : LiftMonad.isComplete ΣΣ (Dominance.hSDProp ΣΣ))
            where
   -- Do we need another axiom?
-  
+
 --   -- The last axiom in Fiore-Rosolini is that the lifting functor L
 --   -- has "rank", meaning it preserves κ-filtered colimits for some
 --   -- regular cardinal κ.
 
 --   -- but they say it is also sufficient that L preserve reflexive
 --   -- coequalizers which seems maybe possible to prove?
-
 
   module ΣΣ = Dominance ΣΣ
   open ΣΣ
@@ -158,3 +157,24 @@ module SDT (ΣΣ : Dominance {ℓ})
 
   L0≡1 : L ⊥* ≡ Unit*
   L0≡1 = ua (isoToEquiv (iso (λ x → lift tt) (λ x → (⊥* , ⊥-isSemiDecidable) , λ lifted → Cubical.Data.Empty.elim (lower lifted)) (λ b → refl) λ a → Σ≡Prop (λ x → isProp→ isProp⊥*) (Σ≡Prop isPropisSemiDecidableProp (ua (uninhabEquiv lower λ x → lower (snd a x))))))
+
+
+  -- The information ordering
+  _[_⊑_] : ∀ (X : Predomain) → ⟨ X ⟩ → ⟨ X ⟩ → hProp (ℓ-suc ℓ)
+  X [ x ⊑ y ] = (∀ (ϕ : ⟨ X ⟩ → hSDProp) → ⟨ ϕ x ⟩ → ⟨ ϕ y ⟩) , isPropΠ (λ ϕ → isProp→ (isSemiDecidableProp→isProp _ (str (ϕ y))))
+
+  refl⊑ : ∀ X x → ⟨ X [ x ⊑ x ] ⟩
+  refl⊑ X x = λ ϕ x₁ → x₁
+
+  trans⊑ : ∀ X x₁ x₂ x₃ → ⟨ X [ x₁ ⊑ x₂ ] ⟩ → ⟨ X [ x₂ ⊑ x₃ ] ⟩ → ⟨  X [ x₁ ⊑ x₃ ] ⟩
+  trans⊑ X x₁ x₂ x₃ x12 x23 = λ ϕ p → x23 ϕ (x12 ϕ p)
+
+  all-functions-are-monotone : ∀ X Y (f : ⟨ X ⟩ → ⟨ Y ⟩) x x' → ⟨ X [ x ⊑ x' ] ⟩ → ⟨ Y [ f x ⊑ f x' ] ⟩
+  all-functions-are-monotone X Y f x x' = λ xx' ϕ p → xx' (λ x₁ → typ (ϕ (f x₁)) , str (ϕ (f x₁))) p
+
+  record _◃_ (X Y : Predomain) : Type (ℓ-suc ℓ) where
+    field
+      embed  : ⟨ X ⟩ → ⟨ Y ⟩
+      project : ⟨ Y ⟩ → ⟨ X ⟩
+      retraction : ∀ x → project (embed x) ≡ x
+      projection : ∀ y → ⟨ Y [ y ⊑ embed (project y) ] ⟩
