@@ -11,6 +11,11 @@ open import Cubical.Data.Empty
 open import Cubical.Data.Nat
 open import Cubical.Data.Sigma
 
+open import Cubical.Categories.Category
+open import Cubical.Categories.Constructions.FullSubcategory
+open import Cubical.Categories.Functor
+open import Cubical.Categories.Instances.Sets
+
 private
   variable
     ℓ : Level
@@ -69,15 +74,6 @@ module LiftMonad (ΣΣ : Dominance {ℓ}) where
   map : ∀ {X Y} → (X → Y) → L X → L Y
   map f x~ = (supp x~) , (λ p → f (elt x~ p))
 
-  L-unit-R : ∀ {X} → (l : L X) → ext {X} η l ≡ l
-  L-unit-R l = {!!}
-
-  L-unit-L : ∀ {X Y} → (x : X) → (k : X → L Y) → ext k (η x) ≡ k x
-  L-unit-L x k = {!!}
-
-  L-assoc : ∀ {X Y Z} (l : L X) (k : X → L Y) (h : Y → L Z) → ext (λ x → ext h (k x)) l ≡ ext h (ext k l)
-  L-assoc = {!!}
-
   data ω : Type (ℓ-suc ℓ) where
     think : L ω → ω
 
@@ -110,6 +106,9 @@ module LiftMonad (ΣΣ : Dominance {ℓ}) where
   unfoldω+ : ∀ {X} → (X → L X) → X → ω+
   unfoldω+ g x .prj = supp (g x) , λ p → unfoldω+ g (elt (g x) p)
 
+  Ω : ω+
+  Ω = unfoldω+ (λ x → (Unit* , isSemiDecidable⊤) , λ _ → tt*) (lift tt)
+
   -- TODO
   -- ω+-is-final : ∀ {X} → isSet X → (g : X → L X) → ∃![ h ∈ (X → ω+) ] (∀ x → ω+.prj (h x) ≡ map h (g x))
   -- ω+-is-final = {!!}
@@ -120,6 +119,9 @@ module LiftMonad (ΣΣ : Dominance {ℓ}) where
   hasLimit : ∀ {X : Type (ℓ-suc ℓ)} → (ω → X) → Type (ℓ-suc ℓ)
   hasLimit {X} chainX = ∃![ limChain ∈ (ω+ → X) ] chainX ≡ (λ x → limChain (ω→ω+ x))
 
+  limitPt : ∀ {X : Type (ℓ-suc ℓ)} → (ω+ → X) → X
+  limitPt limChain = limChain Ω
+
   isPropHasLimit : ∀ {X} → (chain : ω → X) → isProp (hasLimit chain)
   isPropHasLimit chain = isProp∃!
 
@@ -129,11 +131,19 @@ module LiftMonad (ΣΣ : Dominance {ℓ}) where
   isPropIsComplete : ∀ {X} → isProp (isComplete X)
   isPropIsComplete = isPropΠ isPropHasLimit
 
+  isWellComplete : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
+  isWellComplete X = isComplete (L X)
+
+  
+
   isPredomain : Type (ℓ-suc ℓ) → Type (ℓ-suc ℓ)
-  isPredomain X = isSet X × isComplete X
+  isPredomain X = isSet X × isWellComplete X
 
   Predomain : Type (ℓ-suc (ℓ-suc ℓ))
   Predomain = TypeWithStr (ℓ-suc ℓ) isPredomain
+
+  PREDOMAIN : Category _ _
+  PREDOMAIN = FullSubcategory (SET (ℓ-suc ℓ)) λ x → isComplete ⟨ x ⟩
 
 module SDT (ΣΣ : Dominance {ℓ})
            (⊥-isSemiDecidable : Dominance.isSemiDecidableProp ΣΣ ⊥*)
@@ -141,40 +151,58 @@ module SDT (ΣΣ : Dominance {ℓ})
            where
   -- Do we need another axiom?
 
---   -- The last axiom in Fiore-Rosolini is that the lifting functor L
---   -- has "rank", meaning it preserves κ-filtered colimits for some
---   -- regular cardinal κ.
+  -- The last axiom in Fiore-Rosolini is that the lifting functor L
+  -- has "rank", meaning it preserves κ-filtered colimits for some
+  -- regular cardinal κ.
 
---   -- but they say it is also sufficient that L preserve reflexive
---   -- coequalizers which seems maybe possible to prove?
+  -- but they say it is also sufficient that L preserve reflexive
+  -- coequalizers which seems maybe possible to prove?
 
   module ΣΣ = Dominance ΣΣ
   open ΣΣ
   open LiftMonad ΣΣ
 
-  isPredomainSDProp : isPredomain hSDProp
-  isPredomainSDProp = isSetSDProp , Σ-is-complete
+  -- | TODO:
+  -- | 1. Prove Σ is *well*-complete, i.e., a predomain
+  -- | 2. Show L is a monad on PREDOMAIN
+  -- | 3. Prove Well-complete objects are complete
+  -- | 4. Construct DOMAIN (w/ strict maps) as the EM category of L
+  -- | 5. Construct a fixed point combinator for domains
+
+  L-unit-R : ∀ {X} → (l : L X) → ext {X} η l ≡ l
+  L-unit-R l = {!!}
+
+  L-unit-L : ∀ {X Y} → (x : X) → (k : X → L Y) → ext k (η x) ≡ k x
+  L-unit-L x k = {!!}
+
+  L-assoc : ∀ {X Y Z} (l : L X) (k : X → L Y) (h : Y → L Z) → ext (λ x → ext h (k x)) l ≡ ext h (ext k l)
+  L-assoc = {!!}
 
   L0≡1 : L ⊥* ≡ Unit*
   L0≡1 = ua (isoToEquiv (iso (λ x → lift tt) (λ x → (⊥* , ⊥-isSemiDecidable) , λ lifted → Cubical.Data.Empty.elim (lower lifted)) (λ b → refl) λ a → Σ≡Prop (λ x → isProp→ isProp⊥*) (Σ≡Prop isPropisSemiDecidableProp (ua (uninhabEquiv lower λ x → lower (snd a x))))))
 
-
   -- The information ordering
-  _[_⊑_] : ∀ (X : Predomain) → ⟨ X ⟩ → ⟨ X ⟩ → hProp (ℓ-suc ℓ)
-  X [ x ⊑ y ] = (∀ (ϕ : ⟨ X ⟩ → hSDProp) → ⟨ ϕ x ⟩ → ⟨ ϕ y ⟩) , isPropΠ (λ ϕ → isProp→ (isSemiDecidableProp→isProp _ (str (ϕ y))))
+  _⊑_ : ∀ {X : Type (ℓ-suc ℓ)} → X → X → Type (ℓ-suc ℓ)
+  _⊑_ {X} x y = (∀ (ϕ : X → hSDProp) → ⟨ ϕ x ⟩ → ⟨ ϕ y ⟩)
 
-  refl⊑ : ∀ X x → ⟨ X [ x ⊑ x ] ⟩
-  refl⊑ X x = λ ϕ x₁ → x₁
+  isProp⊑ : ∀ {X} (x y : X) → isProp (x ⊑ y)
+  isProp⊑ x y =  isPropΠ (λ ϕ → isProp→ (isSemiDecidableProp→isProp _ (str (ϕ y))))
 
-  trans⊑ : ∀ X x₁ x₂ x₃ → ⟨ X [ x₁ ⊑ x₂ ] ⟩ → ⟨ X [ x₂ ⊑ x₃ ] ⟩ → ⟨  X [ x₁ ⊑ x₃ ] ⟩
-  trans⊑ X x₁ x₂ x₃ x12 x23 = λ ϕ p → x23 ϕ (x12 ϕ p)
+  refl⊑ : ∀ {X} (x : X) → x ⊑ x
+  refl⊑ x = λ ϕ x₁ → x₁
 
-  all-functions-are-monotone : ∀ X Y (f : ⟨ X ⟩ → ⟨ Y ⟩) x x' → ⟨ X [ x ⊑ x' ] ⟩ → ⟨ Y [ f x ⊑ f x' ] ⟩
-  all-functions-are-monotone X Y f x x' = λ xx' ϕ p → xx' (λ x₁ → typ (ϕ (f x₁)) , str (ϕ (f x₁))) p
+  trans⊑ : ∀ {X}{x₁ x₂ x₃ : X} → x₁ ⊑ x₂ → x₂ ⊑ x₃ → x₁ ⊑ x₃
+  trans⊑ x12 x23 = λ ϕ p → x23 ϕ (x12 ϕ p)
+
+  all-functions-are-monotone : ∀ {X Y} (f : X → Y) → ∀ {x}{x'} → x ⊑ x' → f x ⊑ f x'
+  all-functions-are-monotone f {x}{x'} x⊑x' = λ ϕ p → x⊑x' (λ x₁ → ϕ (f x₁)) p
+
+  _⊑→_ : ∀ {X Y : Type (ℓ-suc ℓ)} (f g : X → Y) → Type (ℓ-suc ℓ)
+  _⊑→_ {X}{Y} f g = ∀ x → f x ⊑ g x
 
   record _◃_ (X Y : Predomain) : Type (ℓ-suc ℓ) where
     field
       embed  : ⟨ X ⟩ → ⟨ Y ⟩
       project : ⟨ Y ⟩ → ⟨ X ⟩
       retraction : ∀ x → project (embed x) ≡ x
-      projection : ∀ y → ⟨ Y [ y ⊑ embed (project y) ] ⟩
+      projection : ∀ y → y ⊑ embed (project y)
